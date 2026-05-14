@@ -117,7 +117,7 @@ Pour un projet existant:
 - le script vérifie la présence de Tailwind CSS;
 - il garantit l'alias `@/*` dans `tsconfig.json` (ou `jsconfig.json`), vers `./*` ou `./src/*`.
 
-Si Tailwind est absent, le script s'arrête et demande d'installer Tailwind d'abord (comme recommandé par la doc).
+Si Tailwind est absent, le script s'arrête et demande d'installer Tailwind d'abord (comme recommandé par la doc de Shadcn).
 
 ## Comportement en cas d'erreur
 
