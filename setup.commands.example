@@ -1,6 +1,10 @@
 # Sequential setup commands (one per line)
-# Example for a reusable Next.js + Tailwind v3 setup:
+# Example for a reusable Next.js + shadcn/ui setup:
 
 ./scripts/setup-next-tailwind.sh my-project
+# With src/ directory:
+# ./scripts/setup-next-tailwind.sh my-project --src-dir
 # To start dev server automatically after setup:
 # ./scripts/setup-next-tailwind.sh my-project --dev
+# To skip shadcn/ui initialization:
+# ./scripts/setup-next-tailwind.sh my-project --no-shadcn

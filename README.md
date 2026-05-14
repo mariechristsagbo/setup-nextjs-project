@@ -1,16 +1,16 @@
-# Setup Next.js + Tailwind v3
+# Setup Next.js + shadcn/ui
 
-Ce dépôt fournit des scripts Bash pour automatiser la création et la configuration d'un projet **Next.js (TypeScript)** avec **Tailwind CSS v3**.
+Ce dépôt fournit des scripts Bash pour automatiser la création d'un projet **Next.js (TypeScript)** avec les defaults recommandés, puis initialiser **shadcn/ui**.
 
 ## Objectif
 
-Éviter de refaire manuellement les mêmes étapes de bootstrap:
+Automatiser le workflow recommandé par la doc shadcn/ui:
 
-- création d'un projet Next.js;
-- installation des dépendances Tailwind v3;
-- génération des fichiers de configuration Tailwind/PostCSS;
-- mise à jour de `globals.css`;
-- exécution séquentielle de commandes de setup.
+- création du projet avec `create-next-app`;
+- Tailwind CSS + App Router + alias `@/*` configurés dès la création;
+- option `src/` via `--src-dir`;
+- vérification de l'alias `@/*` pour projets existants;
+- initialisation de `shadcn/ui`.
 
 ## Prérequis
 
@@ -20,9 +20,9 @@ Ce dépôt fournit des scripts Bash pour automatiser la création et la configur
 
 ## Structure
 
-- `Makefile`: commandes principales d'orchestration.
+- `Makefile`: commandes d'orchestration.
 - `scripts/run-sequential.sh`: exécute des commandes ligne par ligne depuis un fichier.
-- `scripts/setup-next-tailwind.sh`: bootstrap Next.js + Tailwind v3.
+- `scripts/setup-next-tailwind.sh`: setup Next.js + alias + shadcn/ui.
 - `setup.commands.example`: exemple de commandes séquentielles.
 - `setup.commands`: fichier utilisé par `make setup`.
 
@@ -42,22 +42,27 @@ Crée `setup.commands` à partir de `setup.commands.example` s'il n'existe pas.
 make setup
 ```
 
-Lit `setup.commands`, ignore les lignes vides/commentées (`#`), exécute chaque ligne dans un shell Bash et s'arrête au premier échec.
+Lit `setup.commands`, ignore les lignes vides/commentées (`#`), exécute chaque ligne et s'arrête au premier échec.
 
-### 3. Créer/configurer un projet Next.js + Tailwind
+### 3. Setup standard (recommandé)
 
 ```bash
 make setup-next PROJECT_NAME=my-project
 ```
 
-Lance `scripts/setup-next-tailwind.sh` pour:
+- Crée le projet s'il n'existe pas avec les defaults recommandés (`tailwind`, `app router`, alias `@/*`).
+- Si le projet existe déjà, il est réutilisé.
+- Lance `shadcn init` en mode defaults.
 
-- créer le projet s'il n'existe pas;
-- installer les dépendances;
-- configurer Tailwind v3 et PostCSS;
-- injecter les directives `@tailwind` dans `globals.css`.
+### 4. Setup avec dossier `src/`
 
-### 4. Même setup + démarrage du serveur dev
+```bash
+make setup-next-src PROJECT_NAME=my-project
+```
+
+Crée le projet avec `--src-dir` (ou force l'alias `@/*` vers `./src/*` sur un projet existant).
+
+### 5. Setup + démarrage du serveur dev
 
 ```bash
 make setup-next-dev PROJECT_NAME=my-project
@@ -65,42 +70,39 @@ make setup-next-dev PROJECT_NAME=my-project
 
 Fait le setup puis exécute `pnpm dev`.
 
-## Utilisation directe du script principal
+### 6. Setup sans shadcn/ui
+
+```bash
+make setup-next-no-shadcn PROJECT_NAME=my-project
+```
+
+Fait le setup Next.js sans lancer `shadcn init`.
+
+## Utilisation directe du script
 
 ```bash
 ./scripts/setup-next-tailwind.sh my-project
+./scripts/setup-next-tailwind.sh my-project --src-dir
 ./scripts/setup-next-tailwind.sh my-project --dev
+./scripts/setup-next-tailwind.sh my-project --no-shadcn
 ```
 
-Affichage de l'aide:
+Aide:
 
 ```bash
 ./scripts/setup-next-tailwind.sh --help
 ```
 
-## Personnaliser `setup.commands`
+## Projets existants
 
-Exemple:
+Pour un projet existant:
 
-```bash
-# Une commande par ligne
-./scripts/setup-next-tailwind.sh my-project
-# ./scripts/setup-next-tailwind.sh my-project --dev
-```
+- le script vérifie la présence de Tailwind CSS;
+- il garantit l'alias `@/*` dans `tsconfig.json` (ou `jsconfig.json`), vers `./*` ou `./src/*`.
 
-Puis:
-
-```bash
-make setup
-```
+Si Tailwind est absent, le script s'arrête et demande d'installer Tailwind d'abord (comme recommandé par la doc).
 
 ## Comportement en cas d'erreur
 
 - `run-sequential.sh` stoppe immédiatement si une commande échoue.
-- `setup-next-tailwind.sh` stoppe si un prérequis manque (`node`, version, `pnpm`).
-
-## Points d'attention
-
-- Le script réécrit `tailwind.config.js` et `postcss.config.mjs`.
-- Il supprime `postcss.config.js` s'il existe.
-- En cas de relance sur un projet existant, vérifie les configurations personnalisées avant d'exécuter le script.
+- `setup-next-tailwind.sh` stoppe si un prérequis manque (`node`, version, `pnpm`) ou si `shadcn init` échoue.

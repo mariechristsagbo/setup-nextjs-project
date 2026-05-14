@@ -3,20 +3,34 @@ set -Eeuo pipefail
 
 project_name="my-project"
 run_dev=false
+run_shadcn=true
+use_src_dir=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dev)
       run_dev=true
       ;;
+    --no-shadcn)
+      run_shadcn=false
+      ;;
+    --src-dir)
+      use_src_dir=true
+      ;;
     -h|--help)
-      echo "Usage: $0 [project-name] [--dev]"
+      echo "Usage: $0 [project-name] [--src-dir] [--dev] [--no-shadcn]"
       echo "Prerequisites: Node.js >= 20, pnpm (or corepack available)"
       echo "Example: $0 my-project"
+      echo "Example: $0 my-project --src-dir"
       echo "Example: $0 my-project --dev"
+      echo "Example: $0 my-project --no-shadcn"
       exit 0
       ;;
     *)
+      if [[ "$1" == -* ]]; then
+        echo "[error] Unknown option: $1"
+        exit 1
+      fi
       project_name="$1"
       ;;
   esac
@@ -55,15 +69,90 @@ ensure_pnpm() {
   fi
 }
 
+ensure_import_alias() {
+  local alias_target="$1"
+  local config_file=""
+
+  if [[ -f tsconfig.json ]]; then
+    config_file="tsconfig.json"
+  elif [[ -f jsconfig.json ]]; then
+    config_file="jsconfig.json"
+  else
+    echo "[warn] No tsconfig.json or jsconfig.json found. Skipping @/* alias check."
+    return
+  fi
+
+  node - "$config_file" "$alias_target" <<'NODE'
+const fs = require("fs")
+const [configFile, aliasTarget] = process.argv.slice(2)
+const raw = fs.readFileSync(configFile, "utf8")
+
+let data
+try {
+  data = JSON.parse(raw)
+} catch (error) {
+  console.error(`[error] ${configFile} is not valid JSON.`)
+  console.error(`[hint] Configure compilerOptions.paths['@/*'] manually to ['${aliasTarget}']`)
+  process.exit(1)
+}
+
+data.compilerOptions ||= {}
+data.compilerOptions.baseUrl ||= "."
+data.compilerOptions.paths ||= {}
+data.compilerOptions.paths["@/*"] = [aliasTarget]
+
+fs.writeFileSync(configFile, `${JSON.stringify(data, null, 2)}\n`)
+NODE
+
+  echo "[info] Ensured @/* import alias in $config_file -> $alias_target"
+}
+
+ensure_tailwind_for_existing_project() {
+  if node -e 'const p=require("./package.json");const deps={...(p.dependencies||{}),...(p.devDependencies||{})};process.exit(deps.tailwindcss?0:1)'; then
+    return
+  fi
+
+  echo "[error] Tailwind CSS is missing in this existing project."
+  echo "[hint] Install Tailwind following the official Next.js docs, then rerun this script."
+  exit 1
+}
+
+setup_shadcn() {
+  if [[ "$run_shadcn" != true ]]; then
+    echo "[info] Skipping shadcn/ui setup (--no-shadcn)."
+    return
+  fi
+
+  if [[ -f components.json ]]; then
+    echo "[info] shadcn/ui already initialized (components.json found)."
+    return
+  fi
+
+  echo "[info] Initializing shadcn/ui with default options..."
+  if pnpm dlx shadcn@latest init -d; then
+    return
+  fi
+
+  echo "[error] Unable to initialize shadcn/ui automatically."
+  echo "[hint] Try manually: pnpm dlx shadcn@latest init"
+  exit 1
+}
+
 require_cmd node
 ensure_node_version
 ensure_pnpm
 
 project_dir="$(pwd)/$project_name"
+created_project=false
 
 if [[ ! -d "$project_name" ]]; then
-  echo "[info] Creating Next.js project: $project_name"
-  pnpm dlx create-next-app@latest "$project_name" --typescript --eslint --use-pnpm --no-tailwind --disable-git --yes
+  echo "[info] Creating Next.js project with recommended defaults: $project_name"
+  create_cmd=(pnpm create next-app@latest "$project_name" --typescript --eslint --tailwind --app --use-pnpm --import-alias "@/*" --yes)
+  if [[ "$use_src_dir" == true ]]; then
+    create_cmd+=(--src-dir)
+  fi
+  "${create_cmd[@]}"
+  created_project=true
 elif [[ ! -f "$project_name/package.json" ]]; then
   echo "[error] Directory '$project_name' exists but is not a Node project (missing package.json)."
   exit 1
@@ -76,66 +165,17 @@ cd "$project_dir"
 echo "[info] Installing project dependencies..."
 pnpm install
 
-echo "[info] Installing Tailwind v3 dependencies..."
-pnpm add -D tailwindcss@3 postcss autoprefixer
-pnpm remove @tailwindcss/postcss >/dev/null 2>&1 || true
-
-echo "[info] Initializing Tailwind config files..."
-pnpm exec tailwindcss init -p
-
-echo "[info] Writing tailwind.config.js..."
-cat > tailwind.config.js <<'CONFIG'
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-
-    // Or if using `src` directory:
-    "./src/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-CONFIG
-
-echo "[info] Writing PostCSS config for Tailwind v3..."
-cat > postcss.config.mjs <<'POSTCSS'
-const config = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-
-export default config;
-POSTCSS
-rm -f postcss.config.js
-
-globals_css=""
-if [[ -f src/app/globals.css ]]; then
-  globals_css="src/app/globals.css"
-elif [[ -f app/globals.css ]]; then
-  globals_css="app/globals.css"
-else
-  mkdir -p src/app
-  globals_css="src/app/globals.css"
-  touch "$globals_css"
+if [[ "$created_project" != true ]]; then
+  ensure_tailwind_for_existing_project
 fi
 
-echo "[info] Updating $globals_css..."
-tmp_file="$(mktemp)"
-{
-  echo "@tailwind base;"
-  echo "@tailwind components;"
-  echo "@tailwind utilities;"
-  echo
-  awk '!/^@tailwind (base|components|utilities);$/' "$globals_css"
-} > "$tmp_file"
-mv "$tmp_file" "$globals_css"
+alias_target="./*"
+if [[ "$use_src_dir" == true || -d src/app ]]; then
+  alias_target="./src/*"
+fi
+ensure_import_alias "$alias_target"
+
+setup_shadcn
 
 if [[ "$run_dev" == true ]]; then
   echo "[info] Starting dev server in $project_name..."

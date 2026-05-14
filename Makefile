@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMMANDS_FILE ?= setup.commands
 PROJECT_NAME ?= my-project
 
-.PHONY: setup setup-init setup-next setup-next-dev
+.PHONY: setup setup-init setup-next setup-next-dev setup-next-no-shadcn setup-next-src
 
 setup:
 	@./scripts/run-sequential.sh "$(COMMANDS_FILE)"
@@ -21,3 +21,9 @@ setup-next:
 
 setup-next-dev:
 	@./scripts/setup-next-tailwind.sh "$(PROJECT_NAME)" --dev
+
+setup-next-no-shadcn:
+	@./scripts/setup-next-tailwind.sh "$(PROJECT_NAME)" --no-shadcn
+
+setup-next-src:
+	@./scripts/setup-next-tailwind.sh "$(PROJECT_NAME)" --src-dir
