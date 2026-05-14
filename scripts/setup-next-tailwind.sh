@@ -5,6 +5,7 @@ project_name="my-project"
 run_dev=false
 run_shadcn=true
 use_src_dir=false
+shadcn_components=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -17,12 +18,22 @@ while [[ $# -gt 0 ]]; do
     --src-dir)
       use_src_dir=true
       ;;
+    --add)
+      shift
+      if [[ $# -eq 0 || "$1" == -* ]]; then
+        echo "[error] --add expects a component name (example: --add button)."
+        exit 1
+      fi
+      shadcn_components+=("$1")
+      ;;
     -h|--help)
-      echo "Usage: $0 [project-name] [--src-dir] [--dev] [--no-shadcn]"
+      echo "Usage: $0 [project-name] [--src-dir] [--dev] [--no-shadcn] [--add <component>]"
       echo "Prerequisites: Node.js >= 20, pnpm (or corepack available)"
       echo "Example: $0 my-project"
       echo "Example: $0 my-project --src-dir"
       echo "Example: $0 my-project --dev"
+      echo "Example: $0 my-project --add button"
+      echo "Example: $0 my-project --add button --add card"
       echo "Example: $0 my-project --no-shadcn"
       exit 0
       ;;
@@ -119,6 +130,11 @@ ensure_tailwind_for_existing_project() {
 
 setup_shadcn() {
   if [[ "$run_shadcn" != true ]]; then
+    if [[ ${#shadcn_components[@]} -gt 0 ]]; then
+      echo "[error] Cannot use --add with --no-shadcn."
+      echo "[hint] Remove --no-shadcn, or run: pnpm dlx shadcn@latest add <component>"
+      exit 1
+    fi
     echo "[info] Skipping shadcn/ui setup (--no-shadcn)."
     return
   fi
@@ -136,6 +152,25 @@ setup_shadcn() {
   echo "[error] Unable to initialize shadcn/ui automatically."
   echo "[hint] Try manually: pnpm dlx shadcn@latest init"
   exit 1
+}
+
+add_shadcn_components() {
+  local component
+
+  if [[ ${#shadcn_components[@]} -eq 0 ]]; then
+    return
+  fi
+
+  if [[ ! -f components.json ]]; then
+    echo "[error] shadcn/ui is not initialized (components.json missing), cannot add components."
+    echo "[hint] Run: pnpm dlx shadcn@latest init"
+    exit 1
+  fi
+
+  for component in "${shadcn_components[@]}"; do
+    echo "[info] Adding shadcn component: $component"
+    pnpm dlx shadcn@latest add "$component"
+  done
 }
 
 require_cmd node
@@ -176,6 +211,7 @@ fi
 ensure_import_alias "$alias_target"
 
 setup_shadcn
+add_shadcn_components
 
 if [[ "$run_dev" == true ]]; then
   echo "[info] Starting dev server in $project_name..."

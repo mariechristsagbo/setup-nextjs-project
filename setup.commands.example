@@ -4,6 +4,9 @@
 ./scripts/setup-next-tailwind.sh my-project
 # With src/ directory:
 # ./scripts/setup-next-tailwind.sh my-project --src-dir
+# To add shadcn components after init:
+# ./scripts/setup-next-tailwind.sh my-project --add button
+# ./scripts/setup-next-tailwind.sh my-project --add button --add card
 # To start dev server automatically after setup:
 # ./scripts/setup-next-tailwind.sh my-project --dev
 # To skip shadcn/ui initialization:

@@ -10,7 +10,8 @@ Automatiser le workflow recommandé par la doc shadcn/ui:
 - Tailwind CSS + App Router + alias `@/*` configurés dès la création;
 - option `src/` via `--src-dir`;
 - vérification de l'alias `@/*` pour projets existants;
-- initialisation de `shadcn/ui`.
+- initialisation de `shadcn/ui`;
+- ajout optionnel de composants (ex: `button`).
 
 ## Prérequis
 
@@ -84,6 +85,8 @@ Fait le setup Next.js sans lancer `shadcn init`.
 ./scripts/setup-next-tailwind.sh my-project
 ./scripts/setup-next-tailwind.sh my-project --src-dir
 ./scripts/setup-next-tailwind.sh my-project --dev
+./scripts/setup-next-tailwind.sh my-project --add button
+./scripts/setup-next-tailwind.sh my-project --add button --add card
 ./scripts/setup-next-tailwind.sh my-project --no-shadcn
 ```
 
@@ -91,6 +94,20 @@ Aide:
 
 ```bash
 ./scripts/setup-next-tailwind.sh --help
+```
+
+## Ajouter des composants shadcn
+
+Après l'initialisation, tu peux demander l'ajout automatique de composants avec `--add`:
+
+```bash
+./scripts/setup-next-tailwind.sh my-project --add button
+```
+
+Pour plusieurs composants:
+
+```bash
+./scripts/setup-next-tailwind.sh my-project --add button --add card --add input
 ```
 
 ## Projets existants
@@ -105,4 +122,4 @@ Si Tailwind est absent, le script s'arrête et demande d'installer Tailwind d'ab
 ## Comportement en cas d'erreur
 
 - `run-sequential.sh` stoppe immédiatement si une commande échoue.
-- `setup-next-tailwind.sh` stoppe si un prérequis manque (`node`, version, `pnpm`) ou si `shadcn init` échoue.
+- `setup-next-tailwind.sh` stoppe si un prérequis manque (`node`, version, `pnpm`), si `shadcn init` échoue, ou si `--add` est utilisé avec `--no-shadcn`.
